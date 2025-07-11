@@ -114,3 +114,34 @@ Run the built image inside QEMU
 west build -t run
 
 or single command west build -b qemu_x86 -t run zephyr/samples/hello_world
+
+
+
+as per getting started guide 
+================================================================================
+Get Zephyr and Install Python Dependencies
+powershell
+Copy
+Edit
+# Create project directory
+mkdir D:\zephyrproject
+cd D:\zephyrproject
+
+# Create and activate virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Install West and initialize Zephyr workspace
+pip install west
+west init -m https://github.com/zephyrproject-rtos/zephyr
+
+cd zephyrproject
+west update
+
+# Export Zephyr CMake package (required for build)
+west zephyr-export
+
+# Install all required Python packages
+west packages pip --install
+pip install -r zephyr/scripts/requirements.txt
+=============================================================================================
