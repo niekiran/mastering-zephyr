@@ -71,6 +71,27 @@ west packages pip --install
 west sdk install -t arm-zephyr-eabi
 
 
+1) Install dependencies
+winget install Kitware.CMake Ninja-build.Ninja oss-winget.gperf python Git.Git oss-winget.dtc wget 7zip.7zip
+
+2) Get Zephyr and install Python dependencies
+Create a new virtual environment:
+python -m venv zephyrproject\.venv
+zephyrproject\.venv\Scripts\Activate.ps1
+pip install west
+west init zephyrproject
+cd zephyrproject
+west update
+Export a Zephyr CMake package. This allows CMake to automatically load boilerplate code required for building Zephyr applications.
+
+west zephyr-export
+west packages pip --install
+
+3) Install the Zephyr SDK
+cd $Env:HOMEPATH\zephyrproject\zephyr
+west sdk install
+
+
 
 Build and run command 
 ===========================================================
