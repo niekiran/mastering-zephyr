@@ -1,2 +1,7 @@
 The underlying
 rule is this: write macro rules/matchers from most-specific to least-specific.
+
+
+xxxBesides avoiding boilerplate, macros also help us do things that are inelegant, hard,
+or even impossible to do in plain old Rust. (And you could see DSLs as a specific
+example of this more general category.) 
