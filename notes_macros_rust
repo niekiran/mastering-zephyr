@@ -5,3 +5,20 @@ rule is this: write macro rules/matchers from most-specific to least-specific.
 xxxBesides avoiding boilerplate, macros also help us do things that are inelegant, hard,
 or even impossible to do in plain old Rust. (And you could see DSLs as a specific
 example of this more general category.) 
+
+
+hygiene
+===================
+
+Yes, declarative macros in Rust (those written using macro_rules!) do maintain hygiene by default.
+
+What does macro hygiene mean?
+Macro hygiene ensures that:
+
+Variables declared inside a macro do not accidentally interfere with variables outside the macro, and vice versa.
+
+This helps prevent name collisions and unexpected shadowing.
+
+Yes, by default, in Rust’s declarative macros (macro_rules!), it is impossible for a macro writer’s internal variables to collide with variables from macro users' code, because of macro hygiene.
+
+But here is the full picture:
