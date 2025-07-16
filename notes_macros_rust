@@ -22,3 +22,9 @@ This helps prevent name collisions and unexpected shadowing.
 Yes, by default, in Rust’s declarative macros (macro_rules!), it is impossible for a macro writer’s internal variables to collide with variables from macro users' code, because of macro hygiene.
 
 But here is the full picture:
+
+
+procedural macros 
+=================================
+xxxThe lesson here is that cargo check inside your procedural macro library will only check
+for mistakes in your library code, not in the code it generates.
