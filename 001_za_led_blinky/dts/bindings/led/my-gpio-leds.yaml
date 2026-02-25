@@ -1,0 +1,11 @@
+description: Wrapper for gpio leds with a blink period property
+compatible: "my,gpio-leds"
+
+include: [gpio-leds.yaml]
+
+properties:
+  blink-period-ms:
+    type: int
+    required: false
+    default: 500
+

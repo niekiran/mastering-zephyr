@@ -9,7 +9,7 @@
 # build
 /build*
 /twister-out*
-
+build/
 __pycache__/
 
 # docs

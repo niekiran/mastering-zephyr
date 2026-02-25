@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(echo EXIT: $?:*)",
+      "Bash(cd \"D:/zephyr_workspace/zephyrproject/my-apps\" && west build -b fastbit_stm32nano 003_za_tilt_brick_breaker_claude 2>&1)",
+      "Bash(cd /d/zephyr_workspace/zephyrproject/my-apps && west build -b fastbit_stm32nano 003_za_tilt_brick_breaker_claude 2>&1)",
+      "Bash(west build:*)"
+    ]
+  },
+  "outputStyle": "default",
+  "prefersReducedMotion": false
+}
