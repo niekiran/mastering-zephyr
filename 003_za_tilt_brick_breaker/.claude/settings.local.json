@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/zephyr_workspace/zephyrproject/my-apps/**)",
+      "Bash(west build -b fastbit_stm32nano 003_za_tilt_brick_breaker)",
+      "Bash(west build:*)"
+    ]
+  }
+}

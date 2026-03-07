@@ -119,9 +119,127 @@ All running on resource-constrained hardware using the Zephyr RTOS.
 - **Regulator**: U2 LP2985-3.3 (5V → 3.3V)
 - **Note**: Do not connect external power to header sockets
 
+# Device Orientation
+
+## Normal Playing Position
+
+The player holds the board with the LCD display facing them. The USB connector is to the right.
+
+## MPU6050 Axis Layout (as labelled on PCB)
+
+| Axis | Direction on board                        |
+|------|-------------------------------------------|
+| +X   | Points to the right of the board          |
+| +Y   | Points toward the top of the board        |
+| +Z   | Points out of the board toward the viewer |
+
+## Tilt-to-Paddle Mapping
+
+- The player tilts the board over the **Y axis (Pitch)**.
+- When the **right side (+X side) is lifted**, the accelerometer X value goes **negative** (gravity projects onto −X). The paddle must move **right**.
+- When the **left side (−X side) is lifted**, the accelerometer X value goes **positive** (gravity projects onto +X). The paddle must move **left**.
+- In code: `paddle_velocity ∝ −accel_x` (invert the X channel reading to get the correct direction).
+
+## GC9A01 Display Orientation
+
+### MADCTL Register (0x36)
+
+The GC9A01 orientation is controlled by the MADCTL register.  The relevant
+bits are:
+
+| Bit | Name | Effect |
+|-----|------|--------|
+| 7   | MY   | Mirror Y — flip row address order |
+| 6   | MX   | Mirror X — flip column address order |
+| 5   | MV   | Swap XY — exchange row/column scan direction |
+| 3   | BGR  | Colour byte order: 0 = RGB, 1 = BGR |
+
+Bits ML (4) and MH (2) control refresh scan order and are not exposed because
+they have no visible effect on static game rendering.
+
+### Rotation Presets
+
+| Rotation | MV | MX | MY | Kconfig symbol |
+|----------|----|----|----|----------------|
+| 0°       | 0  | 0  | 0  | `DISPLAY_ROTATION_0` (default) |
+| 90° CW   | 1  | 1  | 0  | `DISPLAY_ROTATION_90` |
+| 180°     | 0  | 1  | 1  | `DISPLAY_ROTATION_180` |
+| 270° CW  | 1  | 0  | 1  | `DISPLAY_ROTATION_270` |
+
+**TBD on hardware.** Start with `DISPLAY_ROTATION_0` (GC9A01 power-on default).
+If the image is upside-down or mirrored, use `west build -t menuconfig` and
+navigate to **Tilt Brick Breaker → Display → Display Orientation** to try the
+other presets without touching source code.
+
+In code, select the preset with:
+
+```c
+#if CONFIG_DISPLAY_ROTATION_0
+    /* 0° */
+#elif CONFIG_DISPLAY_ROTATION_90
+    /* 90° CW */
+#elif CONFIG_DISPLAY_ROTATION_180
+    /* 180° */
+#elif CONFIG_DISPLAY_ROTATION_270
+    /* 270° CW */
+#endif
+```
+
+### Circular Safe Area
+
+The GC9A01 module has a round glass.  The 240×240 framebuffer is fully
+addressable, but pixels outside the inscribed circle (radius 120, centred at
+(120, 120)) are physically masked and never visible.  Rendering outside this
+area wastes SPI bandwidth and may produce artefacts at the panel boundary.
+
+Use `CONFIG_DISPLAY_IS_CIRCULAR`, `CONFIG_DISPLAY_CIRCLE_RADIUS`, and
+`CONFIG_DISPLAY_CIRCLE_CENTER_X/Y` to keep all rendering within the safe area.
+
 # Software Details
 
 # Coding Standard
+
+## Configuration Macros
+
+Device orientation, tilt mapping, and display settings are configured via
+Kconfig and must not be hard-coded anywhere in the source.  Use
+`west build -t menuconfig` and navigate to **Tilt Brick Breaker** to change
+them.
+
+In code, reference these settings as `CONFIG_TILT_*` and `CONFIG_DISPLAY_*`
+symbols, which Zephyr makes available in every translation unit via the
+generated `autoconf.h`.
+
+**Exception — `TILT_LPF_ALPHA`:** Kconfig cannot express a float, so the
+smoothing factor is stored as an integer percentage (`CONFIG_TILT_LPF_ALPHA_PCT`).
+Use the `TILT_LPF_ALPHA` float conversion helper defined in `include/config.h`
+instead of using `CONFIG_TILT_LPF_ALPHA_PCT` directly in code.
+
+This rule covers, but is not limited to:
+
+| Setting | Symbol to use in code | menuconfig path |
+|---------|----------------------|-----------------|
+| Axis selection | `CONFIG_TILT_AXIS` | Tilt Input |
+| Axis swap | `CONFIG_TILT_AXIS_SWAP` | Tilt Input |
+| Sign inversion | `CONFIG_TILT_INVERT` | Tilt Input |
+| Calibration enable | `CONFIG_TILT_CALIBRATION_ENABLE` | Tilt Input |
+| Calibration samples | `CONFIG_TILT_CALIBRATION_SAMPLES` | Tilt Input |
+| Dead zone | `CONFIG_TILT_DEAD_ZONE_MG` | Tilt Input |
+| LPF smoothing | `TILT_LPF_ALPHA` *(float helper from `include/config.h`)* | Tilt Input |
+| Max tilt clamp | `CONFIG_TILT_MAX_MG` | Tilt Input |
+| Display width | `CONFIG_DISPLAY_WIDTH` | Display → Display Geometry |
+| Display height | `CONFIG_DISPLAY_HEIGHT` | Display → Display Geometry |
+| Column start offset | `CONFIG_DISPLAY_X_OFFSET` | Display → Display Geometry |
+| Row start offset | `CONFIG_DISPLAY_Y_OFFSET` | Display → Display Geometry |
+| Rotation preset | `CONFIG_DISPLAY_ROTATION_0` / `_90` / `_180` / `_270` | Display → Display Orientation |
+| Mirror X (MX bit) | `CONFIG_DISPLAY_MIRROR_X` | Display → Display Orientation |
+| Mirror Y (MY bit) | `CONFIG_DISPLAY_MIRROR_Y` | Display → Display Orientation |
+| Swap XY (MV bit) | `CONFIG_DISPLAY_SWAP_XY` | Display → Display Orientation |
+| BGR colour order | `CONFIG_DISPLAY_BGR_ORDER` | Display → Display Orientation |
+| Circular mask active | `CONFIG_DISPLAY_IS_CIRCULAR` | Display → Circular Display Safe Area |
+| Circle radius | `CONFIG_DISPLAY_CIRCLE_RADIUS` | Display → Circular Display Safe Area |
+| Circle centre X | `CONFIG_DISPLAY_CIRCLE_CENTER_X` | Display → Circular Display Safe Area |
+| Circle centre Y | `CONFIG_DISPLAY_CIRCLE_CENTER_Y` | Display → Circular Display Safe Area |
 
 # Linting
 
@@ -129,4 +247,48 @@ All running on resource-constrained hardware using the Zephyr RTOS.
 
 # Required Project Features
 
+## 1. Display and UI
+
+- Full color gameplay on the RGB LCD.
+- An initial front screen shown immediately after reset of the device:
+  - Must display the game name.
+  - Must show a 3-second countdown before gameplay starts.
+  - Must not use plain text only — use simple custom images or sprites for the front screen.
+- During gameplay, show a Heads Up Display (HUD) with:
+  - Current score.
+  - Lives remaining (player starts with 3 lives).
+- An end screen when the game finishes:
+  - Show a Win or Lose message.
+  - Show the final score.
+  - Must not use plain text only — use simple custom images or sprites for the end screen.
+
+## 2. Input and Control
+
+- Use the MPU6050 tilt input to move the paddle left and right.
+- Paddle movement must feel smooth and stable:
+  - Include a dead zone to prevent drift when the board is near-level.
+  - Include smoothing or filtering (e.g. low-pass filter) to reduce jitter.
+  - Include startup calibration if needed to establish a neutral reference.
+
+## 3. Game Rules
+
+- Classic brick breaker gameplay: ball, paddle, bricks, and collision detection.
+- Player starts with 3 lives. A life is lost when the ball falls below the paddle.
+- Win condition: all bricks are cleared.
+- Lose condition: all lives are exhausted (lives reach zero).
+
 # Optional Features
+
+# Open Questions
+
+The following values are required by the implementation but have no confirmed
+target in the spec. They are set to safe placeholders in Kconfig (change via
+`west build -t menuconfig`) and must be tuned on hardware before final release.
+
+| Symbol | Placeholder | What needs confirming |
+|--------|-------------|----------------------|
+| `CONFIG_TILT_CALIBRATION_SAMPLES` | 32 | How many startup samples give a stable zero reference without an unacceptable boot delay? |
+| `CONFIG_TILT_DEAD_ZONE_MG` | 50 mg | What milli-g threshold eliminates drift without making the centre feel unresponsive? |
+| `CONFIG_TILT_LPF_ALPHA_PCT` | 20 (= 0.20) | What EMA coefficient balances smoothness against paddle lag at the chosen game loop rate? |
+| `CONFIG_TILT_MAX_MG` | 500 mg | What tilt magnitude (milli-g) should map to full paddle speed for a comfortable play feel? |
+| `CONFIG_MPU6050_SMPLRT_DIV` | 9 (100 Hz) | What is the target game loop rate? Sensor sample rate should match or exceed it. |

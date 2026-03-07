@@ -10,6 +10,276 @@ menu "Zephyr"
 source "Kconfig.zephyr"
 endmenu
 
+menu "Tilt Brick Breaker"
+
+menu "Tilt Input"
+
+config TILT_AXIS
+	int "Accelerometer axis for paddle control (0=X 1=Y 2=Z)"
+	range 0 2
+	default 0
+	help
+	  Selects which MPU6050 accelerometer axis is read for left/right
+	  paddle control.
+	    0 = X axis (default -- horizontal, points right of board)
+	    1 = Y axis (vertical, points toward top of board)
+	    2 = Z axis (out-of-plane, points toward viewer)
+	  See docs/spec.md section "Device Orientation" for the axis layout.
+
+config TILT_INVERT
+	bool "Invert tilt axis reading"
+	default y
+	help
+	  Inverts the selected axis reading before mapping to paddle direction.
+	    n = no inversion (positive reading -> paddle moves in positive direction)
+	    y = invert       (positive reading -> paddle moves in negative direction)
+	  Default: y -- on this board lifting the right side (+X up) produces a
+	  negative X reading; inverting it gives right-side-up -> paddle right.
+	  See docs/spec.md section "Tilt-to-Paddle Mapping".
+
+config TILT_AXIS_SWAP
+	bool "Swap X and Y accelerometer axes"
+	default n
+	help
+	  Exchanges the X and Y channel values before any other processing.
+	  Enable if the board is physically rotated 90 degrees from the
+	  expected playing orientation described in docs/spec.md.
+	    n = no swap (default -- normal playing orientation)
+	    y = swap X and Y
+
+config TILT_CALIBRATION_ENABLE
+	bool "Enable startup tilt calibration"
+	default y
+	help
+	  When enabled, the application averages several accelerometer readings
+	  at power-on and subtracts that bias from all subsequent tilt values.
+	  Compensates for sensor offset or a non-level resting position.
+	    n = disabled (assume sensor bias is negligible)
+	    y = enabled  (recommended -- reads TILT_CALIBRATION_SAMPLES samples)
+
+config TILT_CALIBRATION_SAMPLES
+	int "Number of calibration samples averaged at startup"
+	depends on TILT_CALIBRATION_ENABLE
+	range 1 256
+	default 32
+	help
+	  Number of accelerometer samples averaged to establish the neutral
+	  reference. More samples give a more stable zero but extend boot time.
+	  At 100 Hz sample rate (MPU6050_SMPLRT_DIV = 9):
+	     8 samples ~  80 ms
+	    32 samples ~ 320 ms  (default placeholder)
+	   128 samples ~  1.3 s
+	  TODO: Confirm on hardware. See docs/spec.md -- Open Questions.
+
+config TILT_DEAD_ZONE_MG
+	int "Tilt dead zone threshold (milli-g)"
+	range 0 500
+	default 50
+	help
+	  Tilt readings whose absolute value is below this threshold are forced
+	  to zero, preventing paddle drift when the board is held nearly level.
+	  Units: milli-g  (1000 mg = 1 g = approx 9.81 m/s^2)
+	     0 = dead zone disabled
+	    20 = very small dead zone
+	    50 = gentle dead zone (default placeholder)
+	   100 = large dead zone, tolerates hand tremor well
+	  TODO: Tune on hardware. See docs/spec.md -- Open Questions.
+
+config TILT_LPF_ALPHA_PCT
+	int "Low-pass filter alpha as a percentage (0-100)"
+	range 0 100
+	default 20
+	help
+	  Exponential moving average smoothing factor expressed as a percentage,
+	  where 100 represents alpha = 1.0 (no filtering).
+	  Applied each sample: filtered = alpha*raw + (1-alpha)*filtered_prev
+	  In code use the TILT_LPF_ALPHA float helper from include/config.h,
+	  which performs the conversion: alpha = TILT_LPF_ALPHA_PCT / 100.0f
+	  Higher value -> more responsive, retains more jitter.
+	  Lower value  -> smoother output, adds lag.
+	   100 = filter disabled (raw reading)
+	    50 = moderate smoothing
+	    20 = strong smoothing (default placeholder)
+	    10 = heavy smoothing, noticeably sluggish
+	  TODO: Tune on hardware. See docs/spec.md -- Open Questions.
+
+config TILT_MAX_MG
+	int "Maximum tilt clamp (milli-g)"
+	range 100 1000
+	default 500
+	help
+	  Tilt magnitudes above this value (after the dead zone is removed) are
+	  clamped before being normalised to a [0.0, 1.0] paddle velocity factor.
+	  Defines the tilt angle that corresponds to full paddle speed.
+	  Units: milli-g  (must be greater than TILT_DEAD_ZONE_MG)
+	   300 = sensitive  (small tilt angle -> full paddle speed)
+	   500 = moderate   (approx 30 degrees for full speed, default placeholder)
+	   700 = requires a large deliberate tilt for full speed
+	  TODO: Tune on hardware. See docs/spec.md -- Open Questions.
+
+endmenu # Tilt Input
+
+menu "Display"
+
+menu "Display Geometry"
+
+config DISPLAY_WIDTH
+	int "Display width in pixels"
+	range 1 65535
+	default 240
+	help
+	  Horizontal resolution of the GC9A01 panel in pixels.
+	  The GC9A01 native resolution is 240×240.
+
+config DISPLAY_HEIGHT
+	int "Display height in pixels"
+	range 1 65535
+	default 240
+	help
+	  Vertical resolution of the GC9A01 panel in pixels.
+	  The GC9A01 native resolution is 240×240.
+
+config DISPLAY_X_OFFSET
+	int "Display column start offset"
+	range 0 255
+	default 0
+	help
+	  Column address offset applied when writing to the GC9A01 frame memory.
+	  Non-zero only for misaligned knockoff panels where the visible area does
+	  not start at column 0.
+
+config DISPLAY_Y_OFFSET
+	int "Display row start offset"
+	range 0 255
+	default 0
+	help
+	  Row address offset applied when writing to the GC9A01 frame memory.
+	  Non-zero only for misaligned knockoff panels where the visible area does
+	  not start at row 0.
+
+endmenu # Display Geometry
+
+menu "Display Orientation"
+
+choice DISPLAY_ROTATION
+	prompt "Display rotation"
+	default DISPLAY_ROTATION_0
+	help
+	  Maps to the MADCTL register (0x36) MV/MX/MY bits in the GC9A01.
+	  Try all four if the image is upside-down or mirrored on first boot.
+	  Use west build -t menuconfig to change without touching source code.
+	  See docs/spec.md section "GC9A01 Display Orientation" for the bit table.
+
+config DISPLAY_ROTATION_0
+	bool "0 degrees (default power-on)"
+	help
+	  MADCTL: MV=0 MX=0 MY=0.  Normal scan order; GC9A01 power-on default.
+
+config DISPLAY_ROTATION_90
+	bool "90 degrees clockwise"
+	help
+	  MADCTL: MV=1 MX=1 MY=0.  Row/column axes swapped, columns mirrored.
+
+config DISPLAY_ROTATION_180
+	bool "180 degrees"
+	help
+	  MADCTL: MV=0 MX=1 MY=1 (+MH).  Both row and column order reversed.
+
+config DISPLAY_ROTATION_270
+	bool "270 degrees clockwise"
+	help
+	  MADCTL: MV=1 MX=0 MY=1.  Row/column axes swapped, rows mirrored.
+
+endchoice # DISPLAY_ROTATION
+
+config DISPLAY_MIRROR_X
+	bool "Mirror X axis (MADCTL MX bit)"
+	default n
+	help
+	  Flips the horizontal axis independently of the rotation preset.
+	  Enable if the image is horizontally mirrored after selecting the
+	  correct rotation.
+	    n = no horizontal flip (default)
+	    y = flip left/right
+
+config DISPLAY_MIRROR_Y
+	bool "Mirror Y axis (MADCTL MY bit)"
+	default n
+	help
+	  Flips the vertical axis independently of the rotation preset.
+	  Enable if the image is vertically mirrored after selecting the
+	  correct rotation.
+	    n = no vertical flip (default)
+	    y = flip top/bottom
+
+config DISPLAY_SWAP_XY
+	bool "Swap X/Y scan direction (MADCTL MV bit)"
+	default n
+	help
+	  Exchanges row and column scan directions independently of the rotation
+	  preset.  Enable if width and height appear transposed on screen.
+	    n = normal scan order (default)
+	    y = swap X and Y scan directions
+
+config DISPLAY_BGR_ORDER
+	bool "Use BGR colour byte order (MADCTL BGR bit)"
+	default y
+	help
+	  Controls colour byte order sent to the GC9A01 panel.
+	  The GC9A01 data sheet specifies a BGR panel; disable only if rendered
+	  colours appear with red and blue channels swapped.
+	    y = BGR order (default — matches GC9A01 panel)
+	    n = RGB order
+
+endmenu # Display Orientation
+
+menu "Circular Display Safe Area"
+
+config DISPLAY_IS_CIRCULAR
+	bool "Display has a circular visible area"
+	default y
+	help
+	  The GC9A01 module has a round glass; pixels outside the inscribed
+	  circle are not visible.  Enabling this flag lets the renderer skip
+	  drawing outside the circle, saving time and avoiding artefacts at
+	  the panel edges.
+	    y = circular mask active (default — GC9A01 round panel)
+	    n = treat display as a full rectangle
+
+config DISPLAY_CIRCLE_RADIUS
+	int "Circular display radius in pixels"
+	depends on DISPLAY_IS_CIRCULAR
+	range 1 32767
+	default 120
+	help
+	  Radius of the circular visible area in pixels.
+	  Default 120 = half of the 240-pixel GC9A01 resolution.
+	  Adjust if the visible circle does not fill the frame exactly.
+
+config DISPLAY_CIRCLE_CENTER_X
+	int "Circular display centre — X (column)"
+	depends on DISPLAY_IS_CIRCULAR
+	range 0 32767
+	default 120
+	help
+	  Pixel column of the centre of the circular visible area.
+	  Default 120 = centre of the 240-pixel-wide GC9A01 frame.
+
+config DISPLAY_CIRCLE_CENTER_Y
+	int "Circular display centre — Y (row)"
+	depends on DISPLAY_IS_CIRCULAR
+	range 0 32767
+	default 120
+	help
+	  Pixel row of the centre of the circular visible area.
+	  Default 120 = centre of the 240-pixel-tall GC9A01 frame.
+
+endmenu # Circular Display Safe Area
+
+endmenu # Display
+
+endmenu # Tilt Brick Breaker
+
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"
