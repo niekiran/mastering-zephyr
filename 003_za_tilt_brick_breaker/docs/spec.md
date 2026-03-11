@@ -61,6 +61,28 @@ All running on resource-constrained hardware using the Zephyr RTOS.
 | CS       | LCD_CSX   | PA4      |                                    |
 | RESET    | LCD_RST   | PB8      |                                    |
 
+### Round Display and Clipping
+
+The GC9A01 is a 240x240 **round** display.  The 240x240 framebuffer is fully
+addressable, but only pixels inside the inscribed circle (center 120,120,
+radius 120) are physically visible through the round glass.  The display
+orientation is set to **270 degrees clockwise** (`CONFIG_DISPLAY_ROTATION_270`).
+
+All drawing primitives must perform **per-row circular clipping**: for each
+scan line, compute the visible x-span from the circle equation and discard
+pixels outside it.  This is handled by `circle_row_span()` in `src/display.c`.
+
+### SPI Pixel Byte Order
+
+The GC9A01 expects RGB565 pixel data in **big-endian** (MSB-first) byte order
+over SPI.  The STM32F303 is little-endian, so every 16-bit pixel value must be
+byte-swapped before transmission.  Use `sys_cpu_to_be16()` from
+`<zephyr/sys/byteorder.h>` on each pixel value written to a framebuffer row.
+
+> **Note:** If the Zephyr MIPI DBI SPI driver is later found to handle the swap
+> internally, remove the application-side `sys_cpu_to_be16()` calls to avoid a
+> double swap (symptoms: colours appear wrong — e.g. red shows as cyan).
+
 ## Touch Panel — CST816S (sheet 2)
 
 - **Interface**: I2C

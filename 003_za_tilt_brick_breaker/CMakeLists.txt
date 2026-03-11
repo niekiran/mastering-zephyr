@@ -11,4 +11,8 @@ project(app LANGUAGES C)
 
 target_include_directories(app PRIVATE include)
 
-target_sources(app PRIVATE src/main.c)
+target_sources(app PRIVATE
+    src/main.c
+    src/display.c
+    src/util.c
+)
