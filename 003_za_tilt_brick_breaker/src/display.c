@@ -5,6 +5,8 @@
 
 #include "display.h"
 #include "game_types.h"
+#include "font5x7.h"
+#include "ui_layout.h"
 
 /* Declared in util.c */
 extern int isqrt_i(int n);
@@ -107,11 +109,187 @@ void fill_circle(int cx, int cy, int r, uint16_t color)
 	}
 }
 
+/* ---- Text rendering ---- */
+
+void draw_char(int x, int y, char c, uint16_t fg, uint16_t bg, uint8_t scale)
+{
+	if (c < 0x20 || c > 0x7F) {
+		c = 0x7F; /* show box for out-of-range */
+	}
+	const uint8_t *glyph = font5x7[c - 0x20];
+
+	for (int col = 0; col < 5; col++) {
+		uint8_t coldata = glyph[col];
+		for (int row = 0; row < 7; row++) {
+			uint16_t color = (coldata & (1 << row)) ? fg : bg;
+			if (scale == 1) {
+				draw_pixel(x + col, y + row, color);
+			} else {
+				fill_rect(x + col * scale, y + row * scale,
+					  scale, scale, color);
+			}
+		}
+	}
+}
+
+void draw_string(int x, int y, const char *s, uint16_t fg, uint16_t bg,
+		 uint8_t scale)
+{
+	while (*s) {
+		draw_char(x, y, *s, fg, bg, scale);
+		x += 6 * scale; /* 5 columns + 1 gap */
+		s++;
+	}
+}
+
+void draw_int(int x, int y, int val, uint16_t fg, uint16_t bg, uint8_t scale)
+{
+	char buf[12];
+	int len = 0;
+	int neg = 0;
+
+	if (val < 0) {
+		neg = 1;
+		val = -val;
+	}
+	if (val == 0) {
+		buf[len++] = '0';
+	} else {
+		while (val > 0) {
+			buf[len++] = '0' + (val % 10);
+			val /= 10;
+		}
+	}
+	if (neg) {
+		buf[len++] = '-';
+	}
+
+	/* Reverse in-place */
+	for (int i = 0; i < len / 2; i++) {
+		char tmp = buf[i];
+		buf[i] = buf[len - 1 - i];
+		buf[len - 1 - i] = tmp;
+	}
+	buf[len] = '\0';
+
+	draw_string(x, y, buf, fg, bg, scale);
+}
+
+void draw_int_right_aligned(int x_right, int y, int val, uint16_t fg,
+			    uint16_t bg, uint8_t scale)
+{
+	char buf[12];
+	int len = 0;
+	int neg = 0;
+
+	if (val < 0) {
+		neg = 1;
+		val = -val;
+	}
+	if (val == 0) {
+		buf[len++] = '0';
+	} else {
+		while (val > 0) {
+			buf[len++] = '0' + (val % 10);
+			val /= 10;
+		}
+	}
+	if (neg) {
+		buf[len++] = '-';
+	}
+
+	for (int i = 0; i < len / 2; i++) {
+		char tmp = buf[i];
+		buf[i] = buf[len - 1 - i];
+		buf[len - 1 - i] = tmp;
+	}
+	buf[len] = '\0';
+
+	int width = len * 6 * scale - scale;
+	draw_string(x_right - width, y, buf, fg, bg, scale);
+}
+
 /* ---- Screen helpers ---- */
 
 void screen_clear(uint16_t color)
 {
-	fill_rect(0, 0, CONFIG_DISPLAY_WIDTH, CONFIG_DISPLAY_HEIGHT, color);
+	uint16_t be_color = sys_cpu_to_be16(color);
+
+	for (int i = 0; i < CONFIG_DISPLAY_WIDTH; i++) {
+		line_buf[i] = be_color;
+	}
+	struct display_buffer_descriptor d = {
+		.buf_size = (uint32_t)CONFIG_DISPLAY_WIDTH * sizeof(uint16_t),
+		.width    = CONFIG_DISPLAY_WIDTH,
+		.height   = 1,
+		.pitch    = CONFIG_DISPLAY_WIDTH,
+	};
+	for (int y = 0; y < CONFIG_DISPLAY_HEIGHT; y++) {
+		display_write(disp_dev, 0, (uint16_t)y, &d, line_buf);
+	}
+}
+
+void screen_draw_startup(void)
+{
+	int cx = CONFIG_DISPLAY_CIRCLE_CENTER_X;
+	int cy = CONFIG_DISPLAY_CIRCLE_CENTER_Y;
+
+	screen_clear(COLOR_DARK_BLUE);
+
+	/* Decorative brick row */
+	static const uint16_t brick_colors[] = {
+		COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_CYAN
+	};
+	int total_bricks_w = STARTUP_BRICK_COUNT * STARTUP_BRICK_W
+			   + (STARTUP_BRICK_COUNT - 1) * STARTUP_BRICK_GAP;
+	int bx = cx - total_bricks_w / 2;
+
+	for (int i = 0; i < STARTUP_BRICK_COUNT; i++) {
+		fill_rect(bx + i * (STARTUP_BRICK_W + STARTUP_BRICK_GAP),
+			  cy + STARTUP_BRICKS_Y_OFF,
+			  STARTUP_BRICK_W, STARTUP_BRICK_H,
+			  brick_colors[i % ARRAY_SIZE(brick_colors)]);
+	}
+
+	/* Title: "BRICK" */
+	int tw = TEXT_WIDTH(5, STARTUP_TITLE_SCALE);
+	draw_string(cx - tw / 2, cy + STARTUP_TITLE_Y_OFF,
+		    "BRICK", COLOR_WHITE, COLOR_DARK_BLUE,
+		    STARTUP_TITLE_SCALE);
+
+	/* Subtitle: "BREAKER" */
+	int sw = TEXT_WIDTH(7, STARTUP_SUBTITLE_SCALE);
+	draw_string(cx - sw / 2, cy + STARTUP_SUBTITLE_Y_OFF,
+		    "BREAKER", COLOR_CYAN, COLOR_DARK_BLUE,
+		    STARTUP_SUBTITLE_SCALE);
+
+	/* Decorative ball */
+	fill_circle(cx, cy + STARTUP_BALL_Y_OFF, BALL_RADIUS, COLOR_YELLOW);
+
+	/* Decorative paddle */
+	fill_rect(cx - STARTUP_PADDLE_W / 2, cy + STARTUP_PADDLE_Y_OFF,
+		  STARTUP_PADDLE_W, STARTUP_PADDLE_H, COLOR_WHITE);
+
+	/* "TILT TO PLAY" hint */
+	int hw = TEXT_WIDTH(12, STARTUP_HINT_SCALE);
+	draw_string(cx - hw / 2, cy + STARTUP_HINT_Y_OFF,
+		    "TILT TO PLAY", COLOR_WHITE, COLOR_DARK_BLUE,
+		    STARTUP_HINT_SCALE);
+}
+
+void screen_draw_countdown(int n)
+{
+	int cx = CONFIG_DISPLAY_CIRCLE_CENTER_X;
+	int cy = CONFIG_DISPLAY_CIRCLE_CENTER_Y;
+
+	screen_clear(COLOR_BLACK);
+
+	/* Large centered digit */
+	int dw = TEXT_WIDTH(1, COUNTDOWN_SCALE);
+	int dh = 7 * COUNTDOWN_SCALE;
+
+	draw_int(cx - dw / 2, cy - dh / 2, n, COLOR_WHITE, COLOR_BLACK,
+		 COUNTDOWN_SCALE);
 }
 
 /* ---- Module init ---- */
