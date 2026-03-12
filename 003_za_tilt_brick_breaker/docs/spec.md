@@ -314,3 +314,12 @@ target in the spec. They are set to safe placeholders in Kconfig (change via
 | `CONFIG_TILT_LPF_ALPHA_PCT` | 20 (= 0.20) | What EMA coefficient balances smoothness against paddle lag at the chosen game loop rate? |
 | `CONFIG_TILT_MAX_MG` | 500 mg | What tilt magnitude (milli-g) should map to full paddle speed for a comfortable play feel? |
 | `CONFIG_MPU6050_SMPLRT_DIV` | 9 (100 Hz) | What is the target game loop rate? Sensor sample rate should match or exceed it. |
+
+# Implementation Plan
+
+Before implementing any checkpoint, read and follow the game plan file at:
+`C:\Users\Admin\.claude\plans\warm-giggling-teapot.md`
+
+That file is the single source of truth for checkpoint ordering, file changes, and
+implementation details. If the plan changes during development, update that same
+file so future implementations always refer to the latest version.

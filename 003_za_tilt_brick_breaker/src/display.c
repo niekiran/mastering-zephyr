@@ -292,6 +292,75 @@ void screen_draw_countdown(int n)
 		 COUNTDOWN_SCALE);
 }
 
+/* ---- Gameplay screen helpers ---- */
+
+static const uint16_t gameplay_brick_colors[BRICK_ROWS] = {
+	COLOR_RED, COLOR_ORANGE, COLOR_YELLOW, COLOR_GREEN, COLOR_BLUE
+};
+
+static void draw_heart(int cx, int cy, uint16_t color)
+{
+	/* Two bumps at top */
+	fill_circle(cx - 2, cy - 1, 2, color);
+	fill_circle(cx + 2, cy - 1, 2, color);
+	/* V-shape bottom */
+	for (int dy = 1; dy <= 4; dy++) {
+		int hw = 4 - dy;
+		draw_hline(cx - hw, cy + dy, 2 * hw + 1, color);
+	}
+}
+
+static void draw_hud(int score, int lives)
+{
+	/* HUD band background */
+	fill_rect(0, 0, CONFIG_DISPLAY_WIDTH, HUD_HEIGHT, COLOR_BLACK);
+
+	/* Score — left side of visible area at y=16
+	 * (at y=16 the circle spans roughly x=61..179) */
+	draw_string(65, 16, "SCORE", COLOR_CYAN, COLOR_BLACK, 1);
+	draw_int(78, 16, score, COLOR_CYAN, COLOR_BLACK, 1);
+
+	/* Lives — hearts on the right, max 3 */
+	int n = lives > 3 ? 3 : lives;
+	for (int i = 0; i < n; i++) {
+		draw_heart(172 - i * 13, 19, COLOR_RED);
+	}
+}
+
+static void draw_bricks(const uint8_t bricks[BRICK_ROWS][BRICK_COLS])
+{
+	for (int r = 0; r < BRICK_ROWS; r++) {
+		for (int c = 0; c < BRICK_COLS; c++) {
+			uint16_t color = bricks[r][c]
+				? gameplay_brick_colors[r]
+				: COLOR_DARK_BLUE;
+			fill_rect(BRICK_X(c), BRICK_Y(r),
+				  BRICK_W, BRICK_H, color);
+		}
+	}
+}
+
+static void draw_paddle(int x)
+{
+	fill_rect(x, PADDLE_Y, PADDLE_W, PADDLE_H, COLOR_WHITE);
+}
+
+static void draw_ball(int x, int y)
+{
+	fill_circle(x, y, BALL_RADIUS, COLOR_YELLOW);
+}
+
+void screen_draw_gameplay(const uint8_t bricks[BRICK_ROWS][BRICK_COLS],
+			  int paddle_x, int ball_x, int ball_y,
+			  int score, int lives)
+{
+	screen_clear(COLOR_DARK_BLUE);
+	draw_hud(score, lives);
+	draw_bricks(bricks);
+	draw_paddle(paddle_x);
+	draw_ball(ball_x, ball_y);
+}
+
 /* ---- Module init ---- */
 
 int display_module_init(void)

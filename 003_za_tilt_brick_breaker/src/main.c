@@ -1,4 +1,5 @@
 #include <zephyr/kernel.h>
+#include <string.h>
 #include "display.h"
 #include "game_types.h"
 
@@ -15,7 +16,10 @@ int main(void)
 		k_msleep(1000);
 	}
 
-	screen_clear(COLOR_BLACK);
+	static uint8_t bricks[BRICK_ROWS][BRICK_COLS];
+	memset(bricks, 1, sizeof(bricks));
+	screen_draw_gameplay(bricks, PADDLE_X_INIT, BALL_X_INIT, BALL_Y_INIT,
+			     0, 3);
 	while (true) { k_msleep(1000); }
 	return 0;
 }
