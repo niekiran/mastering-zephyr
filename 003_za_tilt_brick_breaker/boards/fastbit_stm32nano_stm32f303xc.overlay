@@ -1,5 +1,31 @@
 #include <zephyr/dt-bindings/display/panel.h>
 
+/* Fix 1b: HSI PLL → 64 MHz SYSCLK (max from HSI).
+ * HSI (8 MHz) / 2 (fixed F3 divider) × 16 = 64 MHz.
+ * APB2 = 64 MHz → SPI1 DIV2 = 32 MHz (was 4 MHz → 8× faster).
+ * IMPORTANT: Must use pristine build (`west build -p`) when changing
+ * clock-frequency so CONFIG_SYS_CLOCK_HW_CYCLES_PER_SEC updates
+ * and flash wait states are set correctly (2 WS for >48 MHz).
+ */
+&clk_hsi {
+    status = "okay";
+};
+
+&pll {
+    prediv = <1>;
+    mul = <16>;
+    clocks = <&clk_hsi>;
+    status = "okay";
+};
+
+&rcc {
+    clocks = <&pll>;
+    clock-frequency = <DT_FREQ_M(64)>;
+    ahb-prescaler  = <1>;
+    apb1-prescaler = <2>;
+    apb2-prescaler = <1>;
+};
+
 / {
     chosen {
         zephyr,display = &gc9a01_display;

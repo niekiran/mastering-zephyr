@@ -263,6 +263,13 @@ This rule covers, but is not limited to:
 | Circle centre X | `CONFIG_DISPLAY_CIRCLE_CENTER_X` | Display → Circular Display Safe Area |
 | Circle centre Y | `CONFIG_DISPLAY_CIRCLE_CENTER_Y` | Display → Circular Display Safe Area |
 
+## No Magic Numbers in Rendering Code
+
+Do not use raw numeric literals for pixel coordinates, sizes, or spacing in
+rendering code.  Every user-configurable or layout-dependent constant must be a
+named macro.  Place UI layout macros in `include/ui_layout.h` and gameplay
+geometry macros in `include/game_types.h`.
+
 # Linting
 
 # Unit Testing

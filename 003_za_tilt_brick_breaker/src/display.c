@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/display.h>
 #include <zephyr/devicetree.h>
@@ -12,21 +13,30 @@
 extern int isqrt_i(int n);
 
 static const struct device *disp_dev;
-static uint16_t line_buf[CONFIG_DISPLAY_WIDTH];
 
-/* ---- Internal: write line_buf[0..w-1] to display at (x,y) ---- */
-static void commit_line(int x, int y, int w)
+#define BUF_PIXELS 1024 /* 1024 × 2 bytes = 2 KB */
+static uint16_t line_buf[BUF_PIXELS];
+
+/* ---- Internal: write line_buf[0..w*h-1] to display at (x,y) ---- */
+static void commit_block(int x, int y, int w, int h)
 {
-	for (int i = 0; i < w; i++) {
+	int count = w * h;
+
+	for (int i = 0; i < count; i++) {
 		line_buf[i] = sys_cpu_to_be16(line_buf[i]);
 	}
 	struct display_buffer_descriptor d = {
-		.buf_size = (uint32_t)w * sizeof(uint16_t),
+		.buf_size = (uint32_t)count * sizeof(uint16_t),
 		.width    = (uint16_t)w,
-		.height   = 1,
+		.height   = (uint16_t)h,
 		.pitch    = (uint16_t)w,
 	};
 	display_write(disp_dev, (uint16_t)x, (uint16_t)y, &d, line_buf);
+}
+
+static void commit_line(int x, int y, int w)
+{
+	commit_block(x, y, w, 1);
 }
 
 /* ---- Circular clipping ---- */
@@ -86,8 +96,58 @@ void draw_hline(int x, int y, int len, uint16_t color)
 void fill_rect(int x, int y, int w, int h, uint16_t color)
 {
 	if (w <= 0 || h <= 0) return;
-	for (int row = 0; row < h; row++) {
-		draw_hline(x, y + row, w, color);
+
+	int row = 0;
+
+	while (row < h) {
+		int cy = y + row;
+		int vis_min, vis_max;
+
+		if (!circle_row_span(cy, &vis_min, &vis_max)) {
+			row++;
+			continue;
+		}
+
+		int x0 = x, x1 = x + w - 1;
+
+		if (x0 < vis_min) x0 = vis_min;
+		if (x1 > vis_max) x1 = vis_max;
+
+		int cw = x1 - x0 + 1;
+
+		if (cw <= 0) {
+			row++;
+			continue;
+		}
+
+		/* Count consecutive rows with identical clipped span */
+		int max_rows = BUF_PIXELS / cw;
+
+		if (max_rows < 1) max_rows = 1;
+
+		int batch = 1;
+
+		while (batch < max_rows && row + batch < h) {
+			int ny = y + row + batch;
+			int nmin, nmax;
+
+			if (!circle_row_span(ny, &nmin, &nmax)) break;
+
+			int nx0 = x, nx1 = x + w - 1;
+
+			if (nx0 < nmin) nx0 = nmin;
+			if (nx1 > nmax) nx1 = nmax;
+			if (nx0 != x0 || nx1 != x1) break;
+			batch++;
+		}
+
+		int count = cw * batch;
+
+		for (int i = 0; i < count; i++) {
+			line_buf[i] = color;
+		}
+		commit_block(x0, cy, cw, batch);
+		row += batch;
 	}
 }
 
@@ -214,17 +274,27 @@ void draw_int_right_aligned(int x_right, int y, int val, uint16_t fg,
 void screen_clear(uint16_t color)
 {
 	uint16_t be_color = sys_cpu_to_be16(color);
+	int rows_per_batch = BUF_PIXELS / CONFIG_DISPLAY_WIDTH;
+	int pixels_per_batch = rows_per_batch * CONFIG_DISPLAY_WIDTH;
 
-	for (int i = 0; i < CONFIG_DISPLAY_WIDTH; i++) {
+	for (int i = 0; i < pixels_per_batch; i++) {
 		line_buf[i] = be_color;
 	}
 	struct display_buffer_descriptor d = {
-		.buf_size = (uint32_t)CONFIG_DISPLAY_WIDTH * sizeof(uint16_t),
+		.buf_size = (uint32_t)pixels_per_batch * sizeof(uint16_t),
 		.width    = CONFIG_DISPLAY_WIDTH,
-		.height   = 1,
+		.height   = (uint16_t)rows_per_batch,
 		.pitch    = CONFIG_DISPLAY_WIDTH,
 	};
-	for (int y = 0; y < CONFIG_DISPLAY_HEIGHT; y++) {
+	for (int y = 0; y < CONFIG_DISPLAY_HEIGHT; y += rows_per_batch) {
+		int h = rows_per_batch;
+
+		if (y + h > CONFIG_DISPLAY_HEIGHT) {
+			h = CONFIG_DISPLAY_HEIGHT - y;
+			d.buf_size = (uint32_t)(h * CONFIG_DISPLAY_WIDTH)
+				   * sizeof(uint16_t);
+			d.height = (uint16_t)h;
+		}
 		display_write(disp_dev, 0, (uint16_t)y, &d, line_buf);
 	}
 }
@@ -310,20 +380,29 @@ static void draw_heart(int cx, int cy, uint16_t color)
 	}
 }
 
+static void draw_score_text(int x, int y, int score, uint16_t fg,
+			    uint16_t bg, uint8_t scale)
+{
+	char buf[18];
+
+	snprintf(buf, sizeof(buf), "SCORE %d", score);
+	draw_string(x, y, buf, fg, bg, scale);
+}
+
 static void draw_hud(int score, int lives)
 {
 	/* HUD band background */
 	fill_rect(0, 0, CONFIG_DISPLAY_WIDTH, HUD_HEIGHT, COLOR_BLACK);
 
-	/* Score — left side of visible area at y=16
-	 * (at y=16 the circle spans roughly x=61..179) */
-	draw_string(65, 16, "SCORE", COLOR_CYAN, COLOR_BLACK, 1);
-	draw_int(78, 16, score, COLOR_CYAN, COLOR_BLACK, 1);
+	/* Score — left side of visible area */
+	draw_score_text(HUD_SCORE_X, HUD_SCORE_Y, score,
+			COLOR_CYAN, COLOR_BLACK, HUD_SCORE_SCALE);
 
 	/* Lives — hearts on the right, max 3 */
 	int n = lives > 3 ? 3 : lives;
 	for (int i = 0; i < n; i++) {
-		draw_heart(172 - i * 13, 19, COLOR_RED);
+		draw_heart(HUD_LIVES_X - i * HUD_HEART_SPACING,
+			   HUD_LIVES_Y, COLOR_RED);
 	}
 }
 

@@ -64,6 +64,23 @@
 #define STARTUP_PADDLE_W           60  /* paddle width  (px)       */
 #define STARTUP_PADDLE_H            8  /* paddle height (px)       */
 
+/* ---- HUD (Heads-Up Display) ---- */
+
+/* Font scale for HUD text elements.                                     */
+#define HUD_SCORE_SCALE        1
+
+/* Score label + value position.
+ * X is left edge; Y is top edge of the text baseline.
+ * At y ~ 16 the circular display spans roughly x = 61..179.            */
+#define HUD_SCORE_X           65
+#define HUD_SCORE_Y           16
+
+/* Lives display — hearts drawn from right to left.
+ * X is the centre of the rightmost heart; Y is the heart centre.       */
+#define HUD_LIVES_X          172
+#define HUD_LIVES_Y           19
+#define HUD_HEART_SPACING     13  /* centre-to-centre distance (px)     */
+
 /* ---- Countdown screen ---- */
 
 /* Font scale for the countdown digit (3, 2, 1).
