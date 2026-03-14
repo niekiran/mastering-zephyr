@@ -95,6 +95,24 @@ RAM limited (48 KB SRAM, 16-line buffer = 7,680 bytes).
 3. **Fix 3: Batch text rendering** — ~10x for text drawing. TODO.
 4. **Fix 4: SPI DMA** — frees CPU during transfers. TODO.
 
+## Visual Fix — Display Blanking for Screen Transitions (APPLIED)
+
+Not a throughput optimization — total rendering time is unchanged. Uses the
+GC9A01's blanking (DISPOFF/DISPON) to hide the ~45 ms drawing time during
+screen transitions so each screen appears to load instantly.
+
+**How it works**: `display_blanking_on()` freezes the display output on the
+previous frame while new pixel data is written to the controller's internal RAM.
+`display_blanking_off()` then reveals the completed frame in one shot.
+
+Applied to: `screen_draw_startup()`, `screen_draw_countdown()`,
+`screen_draw_gameplay()`.
+
+**Note**: This technique is for full-screen transitions only. During live
+gameplay (Fix 2 dirty-region updates), blanking is not needed because only
+small regions change per frame and the updates are fast enough (~5 ms) to be
+imperceptible.
+
 ## Key Files
 
 | Purpose | Path |

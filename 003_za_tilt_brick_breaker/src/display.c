@@ -304,6 +304,7 @@ void screen_draw_startup(void)
 	int cx = CONFIG_DISPLAY_CIRCLE_CENTER_X;
 	int cy = CONFIG_DISPLAY_CIRCLE_CENTER_Y;
 
+	display_blanking_on(disp_dev);
 	screen_clear(COLOR_DARK_BLUE);
 
 	/* Decorative brick row */
@@ -345,6 +346,7 @@ void screen_draw_startup(void)
 	draw_string(cx - hw / 2, cy + STARTUP_HINT_Y_OFF,
 		    "TILT TO PLAY", COLOR_WHITE, COLOR_DARK_BLUE,
 		    STARTUP_HINT_SCALE);
+	display_blanking_off(disp_dev);
 }
 
 void screen_draw_countdown(int n)
@@ -352,6 +354,7 @@ void screen_draw_countdown(int n)
 	int cx = CONFIG_DISPLAY_CIRCLE_CENTER_X;
 	int cy = CONFIG_DISPLAY_CIRCLE_CENTER_Y;
 
+	display_blanking_on(disp_dev);
 	screen_clear(COLOR_BLACK);
 
 	/* Large centered digit */
@@ -360,6 +363,7 @@ void screen_draw_countdown(int n)
 
 	draw_int(cx - dw / 2, cy - dh / 2, n, COLOR_WHITE, COLOR_BLACK,
 		 COUNTDOWN_SCALE);
+	display_blanking_off(disp_dev);
 }
 
 /* ---- Gameplay screen helpers ---- */
@@ -433,11 +437,15 @@ void screen_draw_gameplay(const uint8_t bricks[BRICK_ROWS][BRICK_COLS],
 			  int paddle_x, int ball_x, int ball_y,
 			  int score, int lives)
 {
+	display_blanking_on(disp_dev);
+
 	screen_clear(COLOR_DARK_BLUE);
 	draw_hud(score, lives);
 	draw_bricks(bricks);
 	draw_paddle(paddle_x);
 	draw_ball(ball_x, ball_y);
+
+	display_blanking_off(disp_dev);
 }
 
 /* ---- Module init ---- */
