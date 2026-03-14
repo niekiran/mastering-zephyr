@@ -87,4 +87,15 @@
  * scale 4 -> digit is 20x28 px, clearly visible at screen centre. */
 #define COUNTDOWN_SCALE             4
 
+/* ---- End screen (win / lose) ---- */
+
+/* Vertical pixel offsets from display centre.                           */
+#define END_ICON_Y_OFF           (-40) /* trophy / X icon centre         */
+#define END_MSG_Y_OFF             (28) /* "WIN!" / "LOSE" top edge       */
+#define END_SCORE_Y_OFF          (75) /* "SCORE 123" line top edge       */
+
+/* Font scales.                                                          */
+#define END_MSG_SCALE              3   /* result message                  */
+#define END_SCORE_SCALE            2   /* "SCORE 123" line               */
+
 #endif /* INCLUDE_UI_LAYOUT_H_ */

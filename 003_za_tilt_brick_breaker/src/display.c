@@ -448,6 +448,70 @@ void screen_draw_gameplay(const uint8_t bricks[BRICK_ROWS][BRICK_COLS],
 	display_blanking_off(disp_dev);
 }
 
+/* ---- End screen helpers ---- */
+
+static void draw_trophy(int cx, int cy, uint16_t bg)
+{
+	/* Cup body: bottom half of a filled circle */
+	fill_circle(cx, cy, 22, COLOR_YELLOW);
+	fill_rect(cx - 22, cy - 23, 44, 23, bg);
+
+	/* Handles */
+	fill_rect(cx - 28, cy - 8, 6, 16, COLOR_YELLOW);
+	fill_rect(cx + 22, cy - 8, 6, 16, COLOR_YELLOW);
+
+	/* Stem */
+	fill_rect(cx - 4, cy + 22, 8, 14, COLOR_YELLOW);
+
+	/* Base */
+	fill_rect(cx - 18, cy + 36, 36, 6, COLOR_YELLOW);
+}
+
+static void draw_x_icon(int cx, int cy)
+{
+	for (int i = -20; i <= 20; i++) {
+		draw_hline(cx + i - 3, cy + i, 7, COLOR_WHITE);
+		draw_hline(cx - i - 3, cy + i, 7, COLOR_WHITE);
+	}
+}
+
+void screen_draw_end(bool won, int score)
+{
+	int cx = CONFIG_DISPLAY_CIRCLE_CENTER_X;
+	int cy = CONFIG_DISPLAY_CIRCLE_CENTER_Y;
+	uint16_t bg = won ? COLOR_DARK_GREEN : COLOR_DARK_RED;
+
+	display_blanking_on(disp_dev);
+	screen_clear(bg);
+
+	if (won) {
+		draw_trophy(cx, cy + END_ICON_Y_OFF, bg);
+	} else {
+		draw_x_icon(cx, cy + END_ICON_Y_OFF);
+	}
+
+	const char *msg = won ? "WIN!" : "LOSE";
+	int mw = TEXT_WIDTH(4, END_MSG_SCALE);
+
+	draw_string(cx - mw / 2, cy + END_MSG_Y_OFF, msg,
+		    COLOR_YELLOW, bg, END_MSG_SCALE);
+
+	char sbuf[18];
+
+	snprintf(sbuf, sizeof(sbuf), "SCORE %d", score);
+
+	int slen = 0;
+
+	for (const char *p = sbuf; *p; p++) slen++;
+
+	int sw = TEXT_WIDTH(slen, END_SCORE_SCALE);
+
+	draw_string(cx - sw / 2, cy + END_SCORE_Y_OFF, sbuf,
+		    COLOR_WHITE, bg, END_SCORE_SCALE);
+
+	display_blanking_off(disp_dev);
+}
+
 /* ---- Module init ---- */
 
 int display_module_init(void)

@@ -14,6 +14,8 @@
 #define COLOR_GREEN     0x07E0
 #define COLOR_ORANGE    0xFD20
 #define COLOR_BLUE      0x001F
+#define COLOR_DARK_GREEN 0x0320
+#define COLOR_DARK_RED   0x4000
 
 /* ---- Brick grid layout ---- */
 #define BRICK_COLS      8
