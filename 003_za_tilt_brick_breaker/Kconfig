@@ -163,7 +163,7 @@ menu "Display Orientation"
 
 choice DISPLAY_ROTATION
 	prompt "Display rotation"
-	default DISPLAY_ROTATION_0
+	default DISPLAY_ROTATION_270
 	help
 	  Maps to the MADCTL register (0x36) MV/MX/MY bits in the GC9A01.
 	  Try all four if the image is upside-down or mirrored on first boot.

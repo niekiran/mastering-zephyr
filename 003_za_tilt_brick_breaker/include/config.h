@@ -28,4 +28,14 @@
  */
 #define TILT_LPF_ALPHA  (CONFIG_TILT_LPF_ALPHA_PCT / 100.0f)
 
+/* --------------------------------------------------------------------------
+ * Game configuration — edit these macros to tune gameplay
+ * -------------------------------------------------------------------------- */
+#define BALL_SPEED_INIT      2      /* ball velocity magnitude (pixels/tick)  */
+#define BALL_SPEED_MAX       5      /* maximum ball speed after ramp-up       */
+#define SPEED_UP_INTERVAL    8      /* bricks destroyed per speed increase    */
+#define LIVES_INIT           3      /* starting number of lives               */
+#define BRICK_SCORE          10     /* points awarded per brick destroyed      */
+#define FRAME_MS             33     /* target frame period in ms (~30 fps)    */
+
 #endif /* INCLUDE_CONFIG_H_ */

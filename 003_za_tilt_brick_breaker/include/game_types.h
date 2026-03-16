@@ -29,18 +29,21 @@
 #define BRICK_Y(r)      (BRICK_ORIGIN_Y + (r) * (BRICK_H + BRICK_GAP))
 
 /* ---- Paddle ---- */
-#define PADDLE_W        60
+#define PADDLE_W        40
 #define PADDLE_H        10
 #define PADDLE_Y        210
-#define PADDLE_X_INIT   90  /* (240 - 60) / 2 */
+#define PADDLE_X_INIT   100 /* (240 - 40) / 2 */
 
 /* ---- Ball ---- */
 #define BALL_RADIUS     6
 #define BALL_X_INIT     120
-#define BALL_Y_INIT     170
+#define BALL_Y_INIT     (PADDLE_Y - BALL_RADIUS)  /* ball rests on paddle */
 
 /* ---- HUD ---- */
 #define HUD_HEIGHT      25
+
+/* ---- Bounce boundary — ball bounces at bottom edge of HUD ---- */
+#define WALL_TOP         HUD_HEIGHT
 
 /* ---- Brick state ---- */
 typedef uint8_t brick_state_t; /* 0 = destroyed, 1 = active */

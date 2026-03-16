@@ -9,8 +9,7 @@
 #include "font5x7.h"
 #include "ui_layout.h"
 
-/* Declared in util.c */
-extern int isqrt_i(int n);
+#include "util.h"
 
 static const struct device *disp_dev;
 
@@ -510,6 +509,25 @@ void screen_draw_end(bool won, int score)
 		    COLOR_WHITE, bg, END_SCORE_SCALE);
 
 	display_blanking_off(disp_dev);
+}
+
+/* ---- Targeted HUD updates ---- */
+
+void screen_update_score(int score)
+{
+	draw_score_text(HUD_SCORE_X, HUD_SCORE_Y, score,
+			COLOR_CYAN, COLOR_BLACK, HUD_SCORE_SCALE);
+}
+
+void screen_erase_heart(int lives_remaining)
+{
+	draw_heart(HUD_LIVES_X - lives_remaining * HUD_HEART_SPACING,
+		   HUD_LIVES_Y, COLOR_BLACK);
+}
+
+uint16_t gameplay_brick_color(int row)
+{
+	return gameplay_brick_colors[row];
 }
 
 /* ---- Module init ---- */

@@ -32,4 +32,12 @@ void screen_draw_gameplay(const uint8_t bricks[BRICK_ROWS][BRICK_COLS],
                           int score, int lives);
 void screen_draw_end(bool won, int score);
 
+/* Targeted HUD updates — no full-band redraw needed since ball never
+ * enters the HUD area (bounces at WALL_TOP = HUD_HEIGHT). */
+void screen_update_score(int score);
+void screen_erase_heart(int lives_remaining);
+
+/* Brick color for a given row (needed by main.c for brick repair) */
+uint16_t gameplay_brick_color(int row);
+
 #endif /* INCLUDE_DISPLAY_H_ */
