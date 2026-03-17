@@ -15,6 +15,7 @@ target_sources(app PRIVATE
     src/main.c
     src/display.c
     src/game.c
+    src/render.c
     src/input.c
     src/util.c
 )

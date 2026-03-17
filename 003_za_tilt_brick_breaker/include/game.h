@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "game_types.h"
+#include "game_events.h"
 
 /* ---- Game lifecycle state ---- */
 enum game_state {
@@ -24,13 +25,10 @@ struct game_ctx {
 	int bricks_left;
 	int speed;          /* current speed level (BALL_SPEED_INIT..BALL_SPEED_MAX) */
 	int start_dir;      /* +1 or -1, alternates each life loss */
-	/* Rendering hints set by game_update(), reset each tick */
-	int hit_row;        /* row of brick destroyed this tick, or -1 */
-	int hit_col;        /* col of brick destroyed this tick, or -1 */
-	bool life_lost;     /* true if a life was lost this tick */
 };
 
 void game_init(struct game_ctx *ctx);
-void game_update(struct game_ctx *ctx);
+game_events_t game_update(struct game_ctx *ctx, int paddle_x,
+			   struct game_event_data *evt);
 
 #endif /* INCLUDE_GAME_H_ */

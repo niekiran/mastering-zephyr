@@ -17,27 +17,35 @@ void game_init(struct game_ctx *ctx)
 	ctx->score = 0;
 	ctx->lives = LIVES_INIT;
 	ctx->bricks_left = BRICK_ROWS * BRICK_COLS;
-	ctx->hit_row = -1;
-	ctx->hit_col = -1;
-	ctx->life_lost = false;
 }
 
-void game_update(struct game_ctx *ctx)
+game_events_t game_update(struct game_ctx *ctx, int paddle_x,
+			   struct game_event_data *evt)
 {
+	game_events_t flags = 0;
+	int hit_row = -1;
+
 	if (ctx->state != GAME_STATE_RUNNING) {
-		return;
+		return flags;
 	}
 
-	/* Step 1 — Reset per-tick flags */
-	ctx->hit_row = -1;
-	ctx->hit_col = -1;
-	ctx->life_lost = false;
+	/* Snapshot old positions for differential rendering */
+	evt->old_ball_x = ctx->ball_x;
+	evt->old_ball_y = ctx->ball_y;
+	evt->old_paddle_x = ctx->paddle_x;
 
-	/* Step 2 — Move ball */
+	/* Apply new paddle position from input */
+	ctx->paddle_x = paddle_x;
+	if (ctx->paddle_x != evt->old_paddle_x) {
+		flags |= EVT_PADDLE_MOVED;
+	}
+
+	/* Step 1 — Move ball */
 	ctx->ball_x += ctx->ball_dx;
 	ctx->ball_y += ctx->ball_dy;
+	flags |= EVT_BALL_MOVED;
 
-	/* Step 3 — Wall / boundary collisions */
+	/* Step 2 — Wall / boundary collisions */
 #if defined(CONFIG_DISPLAY_IS_CIRCULAR) && CONFIG_DISPLAY_IS_CIRCULAR
 	/* Circular boundary bounce (not below paddle) */
 	{
@@ -121,7 +129,7 @@ void game_update(struct game_ctx *ctx)
 		ctx->ball_dy = (ctx->ball_y < CONFIG_DISPLAY_HEIGHT / 2) ? 1 : -1;
 	}
 
-	/* Step 4 — Paddle collision with angle-based bounce */
+	/* Step 3 — Paddle collision with angle-based bounce */
 	if (ctx->ball_dy > 0) {
 		if (ctx->ball_y + BALL_RADIUS >= PADDLE_Y &&
 		    ctx->ball_y + BALL_RADIUS <= PADDLE_Y + PADDLE_H + ctx->ball_dy &&
@@ -142,9 +150,9 @@ void game_update(struct game_ctx *ctx)
 		}
 	}
 
-	/* Step 5 — Brick collision (first hit only) */
-	for (int r = 0; r < BRICK_ROWS && ctx->hit_row < 0; r++) {
-		for (int c = 0; c < BRICK_COLS && ctx->hit_row < 0; c++) {
+	/* Step 4 — Brick collision (first hit only) */
+	for (int r = 0; r < BRICK_ROWS && hit_row < 0; r++) {
+		for (int c = 0; c < BRICK_COLS && hit_row < 0; c++) {
 			if (!ctx->bricks[r][c]) {
 				continue;
 			}
@@ -163,8 +171,14 @@ void game_update(struct game_ctx *ctx)
 				ctx->bricks[r][c] = 0;
 				ctx->bricks_left--;
 				ctx->score += BRICK_SCORE;
-				ctx->hit_row = r;
-				ctx->hit_col = c;
+				hit_row = r;
+
+				evt->hit_row = r;
+				evt->hit_col = c;
+				flags |= EVT_BRICK_HIT;
+
+				evt->score = ctx->score;
+				flags |= EVT_SCORE_CHANGED;
 
 				/* Determine bounce direction */
 				int adx = dx < 0 ? -dx : dx;
@@ -191,13 +205,19 @@ void game_update(struct game_ctx *ctx)
 		}
 	}
 
-	/* Step 6 — Ball miss check */
+	/* Step 5 — Ball miss check */
 	if (ctx->ball_y - BALL_RADIUS > PADDLE_Y + PADDLE_H) {
 		ctx->lives--;
-		ctx->life_lost = true;
+		evt->lives = ctx->lives;
+		flags |= EVT_LIFE_LOST;
+
+		/* Clear ball/paddle moved — life_lost handles its own rendering */
+		flags &= ~(EVT_BALL_MOVED | EVT_PADDLE_MOVED);
+
 		if (ctx->lives == 0) {
 			ctx->state = GAME_STATE_LOST;
-			return;
+			flags |= EVT_GAME_LOST;
+			return flags;
 		}
 		/* Reset ball + paddle to center; alternate start direction */
 		ctx->start_dir = -ctx->start_dir;
@@ -208,8 +228,11 @@ void game_update(struct game_ctx *ctx)
 		ctx->ball_dy = -ctx->speed;
 	}
 
-	/* Step 7 — Win check */
+	/* Step 6 — Win check */
 	if (ctx->bricks_left == 0) {
 		ctx->state = GAME_STATE_WON;
+		flags |= EVT_GAME_WON;
 	}
+
+	return flags;
 }
