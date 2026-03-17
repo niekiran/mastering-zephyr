@@ -143,11 +143,13 @@ int main(void)
 			}
 		}
 
-		/* Frame timing */
+		/* Frame timing — drop missed frames to keep speed consistent */
 		int64_t now = k_uptime_get();
 		int64_t remaining = next_tick - now;
 		if (remaining > 0) {
 			k_msleep((int32_t)remaining);
+		} else {
+			next_tick = now;
 		}
 	}
 

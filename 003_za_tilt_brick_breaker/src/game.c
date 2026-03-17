@@ -72,6 +72,29 @@ void game_update(struct game_ctx *ctx)
 		if (ctx->ball_dy < 0) {
 			ctx->ball_dy = -ctx->ball_dy;
 		}
+
+		/* Clamp X so ball stays inside the circle at this Y.
+		 * Without this the ceiling and circular boundary fight
+		 * each other in the upper corners, trapping the ball. */
+		int cy = ctx->ball_y - DISPLAY_CY;
+		int br = DISPLAY_R - BALL_RADIUS;
+		int max_nx_sq = br * br - cy * cy;
+
+		if (max_nx_sq > 0) {
+			int max_nx = isqrt_i(max_nx_sq);
+
+			if (ctx->ball_x < DISPLAY_CX - max_nx) {
+				ctx->ball_x = DISPLAY_CX - max_nx;
+				if (ctx->ball_dx < 0) {
+					ctx->ball_dx = -ctx->ball_dx;
+				}
+			} else if (ctx->ball_x > DISPLAY_CX + max_nx) {
+				ctx->ball_x = DISPLAY_CX + max_nx;
+				if (ctx->ball_dx > 0) {
+					ctx->ball_dx = -ctx->ball_dx;
+				}
+			}
+		}
 	}
 #else
 	/* Rectangular boundary bounce */
@@ -89,8 +112,11 @@ void game_update(struct game_ctx *ctx)
 	}
 #endif
 
-	/* Guard: integer truncation in circular reflection can zero out
-	 * ball_dy, leaving the ball stuck moving horizontally forever. */
+	/* Guards: integer truncation in circular reflection can zero out
+	 * a velocity component, leaving the ball stuck on one axis. */
+	if (ctx->ball_dx == 0) {
+		ctx->ball_dx = (ctx->ball_x < CONFIG_DISPLAY_WIDTH / 2) ? 1 : -1;
+	}
 	if (ctx->ball_dy == 0) {
 		ctx->ball_dy = (ctx->ball_y < CONFIG_DISPLAY_HEIGHT / 2) ? 1 : -1;
 	}
