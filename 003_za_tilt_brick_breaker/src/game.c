@@ -60,8 +60,25 @@ game_events_t game_update(struct game_ctx *ctx, int paddle_x,
 			int dot = ctx->ball_dx * nx + ctx->ball_dy * ny;
 
 			if (dot > 0) { /* moving outward */
+				int pre_sq = ctx->ball_dx * ctx->ball_dx
+					   + ctx->ball_dy * ctx->ball_dy;
+
 				ctx->ball_dx -= 2 * dot * nx / dist_sq;
 				ctx->ball_dy -= 2 * dot * ny / dist_sq;
+
+				/* Restore speed lost to integer truncation */
+				int post_sq = ctx->ball_dx * ctx->ball_dx
+					    + ctx->ball_dy * ctx->ball_dy;
+
+				if (post_sq > 0 && post_sq < pre_sq) {
+					int pre  = isqrt_i(pre_sq);
+					int post = isqrt_i(post_sq);
+
+					if (post > 0) {
+						ctx->ball_dx = ctx->ball_dx * pre / post;
+						ctx->ball_dy = ctx->ball_dy * pre / post;
+					}
+				}
 			}
 
 			/* Push ball back inside the boundary */
@@ -70,6 +87,14 @@ game_events_t game_update(struct game_ctx *ctx, int paddle_x,
 			if (dist > 0) {
 				ctx->ball_x = DISPLAY_CX + nx * bounce_r / dist;
 				ctx->ball_y = DISPLAY_CY + ny * bounce_r / dist;
+			}
+
+			/* If bounce is below the brick area, force ball
+			 * toward the paddle to prevent infinite horizontal
+			 * bouncing in the empty zone. */
+			if (ctx->ball_y > BRICK_Y(BRICK_ROWS - 1) + BRICK_H &&
+			    ctx->ball_dy < 0) {
+				ctx->ball_dy = -ctx->ball_dy;
 			}
 		}
 	}
