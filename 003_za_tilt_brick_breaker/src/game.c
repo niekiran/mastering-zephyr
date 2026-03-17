@@ -37,7 +37,44 @@ void game_update(struct game_ctx *ctx)
 	ctx->ball_x += ctx->ball_dx;
 	ctx->ball_y += ctx->ball_dy;
 
-	/* Step 3 — Wall collisions */
+	/* Step 3 — Wall / boundary collisions */
+#if defined(CONFIG_DISPLAY_IS_CIRCULAR) && CONFIG_DISPLAY_IS_CIRCULAR
+	/* Circular boundary bounce (not below paddle) */
+	{
+		int nx = ctx->ball_x - DISPLAY_CX;
+		int ny = ctx->ball_y - DISPLAY_CY;
+		int dist_sq = nx * nx + ny * ny;
+		int bounce_r = DISPLAY_R - BALL_RADIUS;
+
+		if (dist_sq >= bounce_r * bounce_r &&
+		    ctx->ball_y < PADDLE_Y) {
+			/* Reflect velocity off circle normal */
+			int dot = ctx->ball_dx * nx + ctx->ball_dy * ny;
+
+			if (dot > 0) { /* moving outward */
+				ctx->ball_dx -= 2 * dot * nx / dist_sq;
+				ctx->ball_dy -= 2 * dot * ny / dist_sq;
+			}
+
+			/* Push ball back inside the boundary */
+			int dist = isqrt_i(dist_sq);
+
+			if (dist > 0) {
+				ctx->ball_x = DISPLAY_CX + nx * bounce_r / dist;
+				ctx->ball_y = DISPLAY_CY + ny * bounce_r / dist;
+			}
+		}
+	}
+
+	/* HUD ceiling bounce (flat wall at top of play area) */
+	if (ctx->ball_y - BALL_RADIUS < WALL_TOP) {
+		ctx->ball_y = WALL_TOP + BALL_RADIUS;
+		if (ctx->ball_dy < 0) {
+			ctx->ball_dy = -ctx->ball_dy;
+		}
+	}
+#else
+	/* Rectangular boundary bounce */
 	if (ctx->ball_x - BALL_RADIUS < 0) {
 		ctx->ball_x = BALL_RADIUS;
 		ctx->ball_dx = -ctx->ball_dx;
@@ -49,6 +86,13 @@ void game_update(struct game_ctx *ctx)
 	if (ctx->ball_y - BALL_RADIUS < WALL_TOP) {
 		ctx->ball_y = WALL_TOP + BALL_RADIUS;
 		ctx->ball_dy = -ctx->ball_dy;
+	}
+#endif
+
+	/* Guard: integer truncation in circular reflection can zero out
+	 * ball_dy, leaving the ball stuck moving horizontally forever. */
+	if (ctx->ball_dy == 0) {
+		ctx->ball_dy = (ctx->ball_y < CONFIG_DISPLAY_HEIGHT / 2) ? 1 : -1;
 	}
 
 	/* Step 4 — Paddle collision with angle-based bounce */

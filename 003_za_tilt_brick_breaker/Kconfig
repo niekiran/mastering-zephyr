@@ -12,6 +12,35 @@ endmenu
 
 menu "Tilt Brick Breaker"
 
+menu "Input"
+
+choice INPUT_BACKEND
+	prompt "Input backend"
+	default INPUT_BACKEND_TILT
+	help
+	  Selects which hardware input method controls the paddle.
+	  Only one backend is compiled at a time.
+
+config INPUT_BACKEND_TILT
+	bool "MPU6050 tilt sensor"
+	select I2C
+	select SENSOR
+	help
+	  Use the onboard MPU6050 accelerometer for paddle control via
+	  board tilt.  Tilt tuning options appear under "Tilt Input" below.
+
+config INPUT_BACKEND_BUTTONS
+	bool "Button input (future)"
+	help
+	  Placeholder for a future push-button or joystick input backend.
+	  Not yet implemented.
+
+endchoice
+
+endmenu # Input
+
+if INPUT_BACKEND_TILT
+
 menu "Tilt Input"
 
 config TILT_AXIS
@@ -118,6 +147,8 @@ config TILT_MAX_MG
 	  TODO: Tune on hardware. See docs/spec.md -- Open Questions.
 
 endmenu # Tilt Input
+
+endif # INPUT_BACKEND_TILT
 
 menu "Display"
 

@@ -34,10 +34,28 @@
 #define PADDLE_Y        210
 #define PADDLE_X_INIT   100 /* (240 - 40) / 2 */
 
+/* Paddle X bounds: circular display narrows at PADDLE_Y.
+ * Circle (120,120) r=120, at y=210: dx=floor(sqrt(120²-90²))=79.
+ * Visible x: [41, 199]. Paddle (w=40) fits in [41, 160]. */
+#if defined(CONFIG_DISPLAY_IS_CIRCULAR) && CONFIG_DISPLAY_IS_CIRCULAR
+#define PADDLE_X_MIN    41
+#define PADDLE_X_MAX    160
+#else
+#define PADDLE_X_MIN    0
+#define PADDLE_X_MAX    (CONFIG_DISPLAY_WIDTH - PADDLE_W)
+#endif
+
 /* ---- Ball ---- */
 #define BALL_RADIUS     6
 #define BALL_X_INIT     120
 #define BALL_Y_INIT     (PADDLE_Y - BALL_RADIUS)  /* ball rests on paddle */
+
+/* ---- Circular display geometry (from Kconfig, when enabled) ---- */
+#if defined(CONFIG_DISPLAY_IS_CIRCULAR) && CONFIG_DISPLAY_IS_CIRCULAR
+#define DISPLAY_CX      CONFIG_DISPLAY_CIRCLE_CENTER_X
+#define DISPLAY_CY      CONFIG_DISPLAY_CIRCLE_CENTER_Y
+#define DISPLAY_R       CONFIG_DISPLAY_CIRCLE_RADIUS
+#endif
 
 /* ---- HUD ---- */
 #define HUD_HEIGHT      25

@@ -2,7 +2,9 @@
 #include <string.h>
 #include "display.h"
 #include "game.h"
+#include "input.h"
 #include "config.h"
+#include "util.h"
 
 /* ---- Differential rendering helpers ---- */
 
@@ -39,6 +41,10 @@ int main(void)
 	int ret = display_module_init();
 	if (ret) { return ret; }
 
+	/* Init input during startup screen to hide calibration delay */
+	ret = input_init();
+	if (ret) { return ret; }
+
 	screen_draw_startup();
 	k_msleep(2000);
 
@@ -66,6 +72,9 @@ int main(void)
 		int old_by = ctx.ball_y;
 		int old_px = ctx.paddle_x;
 		int old_score = ctx.score;
+
+		/* Read input — absolute paddle position from tilt */
+		ctx.paddle_x = input_read();
 
 		game_update(&ctx);
 
@@ -103,10 +112,18 @@ int main(void)
 			/* 2. Repair bricks under old ball position */
 			repair_bricks_under(old_bx, old_by, &ctx);
 
-			/* 3. Repair paddle if old ball was near it */
-			if (old_by + BALL_RADIUS >= PADDLE_Y) {
+			/* 3. Handle paddle movement + repair */
+			if (ctx.paddle_x != old_px) {
+				fill_rect(old_px, PADDLE_Y,
+					  PADDLE_W, PADDLE_H,
+					  COLOR_DARK_BLUE);
 				fill_rect(ctx.paddle_x, PADDLE_Y,
-					  PADDLE_W, PADDLE_H, COLOR_WHITE);
+					  PADDLE_W, PADDLE_H,
+					  COLOR_WHITE);
+			} else if (old_by + BALL_RADIUS >= PADDLE_Y) {
+				fill_rect(ctx.paddle_x, PADDLE_Y,
+					  PADDLE_W, PADDLE_H,
+					  COLOR_WHITE);
 			}
 
 			/* 4. Erase destroyed brick */

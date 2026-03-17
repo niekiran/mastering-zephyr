@@ -58,3 +58,11 @@
     pinctrl-names = "default";
     cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW>;
 };
+
+/* Set MPU6050 accelerometer sample rate to 100 Hz (1000 / (1+9)).
+ * The mpu6050@68 node already exists in the board DTS under &i2c1. */
+&i2c1 {
+    mpu6050@68 {
+        smplrt-div = <9>;
+    };
+};

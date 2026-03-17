@@ -15,5 +15,8 @@ target_sources(app PRIVATE
     src/main.c
     src/display.c
     src/game.c
+    src/input.c
     src/util.c
 )
+
+target_sources_ifdef(CONFIG_INPUT_BACKEND_TILT app PRIVATE src/input_tilt.c)
