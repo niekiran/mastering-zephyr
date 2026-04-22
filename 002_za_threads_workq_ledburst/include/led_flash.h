@@ -8,7 +8,9 @@ struct led_flash_ctx
     uint32_t toggles_remaining;
     uint32_t period_ms;
     uint32_t count;
+    struct k_spinlock lock;
     struct k_work_delayable work;
+    
     const struct gpio_dt_spec *led;
 };
 

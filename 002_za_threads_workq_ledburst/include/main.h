@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <zephyr/kernel.h> 
+#include <zephyr/spinlock.h>
 
 #define NODE_IDENT_LED0        DT_ALIAS(led0)
 #define NODE_IDENT_BUTTON0     DT_ALIAS(button0)
