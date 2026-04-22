@@ -1,138 +1,66 @@
-# Zephyr Example Application
+# Mastering Zephyr RTOS with DeviceTree and Board Bring Up
 
-<a href="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml?query=branch%3Amain">
-  <img src="https://github.com/zephyrproject-rtos/example-application/actions/workflows/build.yml/badge.svg?event=push">
-</a>
-<a href="https://github.com/zephyrproject-rtos/example-application/actions/workflows/docs.yml?query=branch%3Amain">
-  <img src="https://github.com/zephyrproject-rtos/example-application/actions/workflows/docs.yml/badge.svg?event=push">
-</a>
-<a href="https://zephyrproject-rtos.github.io/example-application">
-  <img alt="Documentation" src="https://img.shields.io/badge/documentation-3D578C?logo=sphinx&logoColor=white">
-</a>
-<a href="https://zephyrproject-rtos.github.io/example-application/doxygen">
-  <img alt="API Documentation" src="https://img.shields.io/badge/API-documentation-3D578C?logo=c&logoColor=white">
-</a>
+Complete workflow: toolchain setup, DeviceTree from scratch, custom board porting, and real world applications on STM32.
 
-This repository contains a Zephyr example application. The main purpose of this
-repository is to serve as a reference on how to structure Zephyr-based
-applications. Some of the features demonstrated in this example are:
+**Udemy course:** https://www.udemy.com/course/mastering-zephyr-rtos-with-devicetree/?referralCode=D0E4381AAF67FBBA1B15
 
-- Basic [Zephyr application][app_dev] skeleton
-- [Zephyr workspace applications][workspace_app]
-- [Zephyr modules][modules]
-- [West T2 topology][west_t2]
-- [Custom boards][board_porting]
-- Custom [devicetree bindings][bindings]
-- Out-of-tree [drivers][drivers]
-- Out-of-tree libraries
-- Example CI configuration (using GitHub Actions)
-- Custom [west extension][west_ext]
-- Custom [Zephyr runner][runner_ext]
-- Doxygen and Sphinx documentation boilerplate
+This repository contains the source code, custom boards, out-of-tree drivers, and DeviceTree bindings used throughout the course. The Zephyr RTOS source, HALs, and SDK are **not** included here — **Zephyr RTOS environment setup and SDK installation are covered step-by-step in the course.**
 
-This repository is versioned together with the [Zephyr main tree][zephyr]. This
-means that every time that Zephyr is tagged, this repository is tagged as well
-with the same version number, and the [manifest](west.yml) entry for `zephyr`
-will point to the corresponding Zephyr tag. For example, the `example-application`
-v2.6.0 will point to Zephyr v2.6.0. Note that the `main` branch always
-points to the development branch of Zephyr, also `main`.
+---
 
-[app_dev]: https://docs.zephyrproject.org/latest/develop/application/index.html
-[workspace_app]: https://docs.zephyrproject.org/latest/develop/application/index.html#zephyr-workspace-app
-[modules]: https://docs.zephyrproject.org/latest/develop/modules.html
-[west_t2]: https://docs.zephyrproject.org/latest/develop/west/workspaces.html#west-t2
-[board_porting]: https://docs.zephyrproject.org/latest/guides/porting/board_porting.html
-[bindings]: https://docs.zephyrproject.org/latest/guides/dts/bindings.html
-[drivers]: https://docs.zephyrproject.org/latest/reference/drivers/index.html
-[zephyr]: https://github.com/zephyrproject-rtos/zephyr
-[west_ext]: https://docs.zephyrproject.org/latest/develop/west/extensions.html
-[runner_ext]: https://docs.zephyrproject.org/latest/develop/modules.html#external-runners
+## Folder structure
 
-## Getting Started
+### Course applications
 
-Before getting started, make sure you have a proper Zephyr development
-environment. Follow the official
-[Zephyr Getting Started Guide](https://docs.zephyrproject.org/latest/getting_started/index.html).
+| Folder | What you learn |
+|---|---|
+| `001_za_led_blinky/` | First Zephyr application. Project layout, `prj.conf`, DeviceTree basics, GPIO, building and flashing. |
+| `002_za_threads_workq_ledburst/` | Threads, work queues, synchronisation primitives, and a small LED-burst pattern. |
+| `003_za_tilt_brick_breaker/` | A full brick-breaker game driven by tilt input on a small display — event-based architecture, timing, display driver integration. |
+| `app/` | Reference template app. Copy this when starting a new application. |
 
-### Initialization
+Each application is a standalone Zephyr project with the usual layout: `CMakeLists.txt`, `prj.conf`, `src/`, `boards/`, optional `debug.conf`, and a `sample.yaml` for Twister.
 
-The first step is to initialize the workspace folder (``my-workspace``) where
-the ``example-application`` and all Zephyr modules will be cloned. Run the following
-command:
+### Shared infrastructure (used by the apps above)
 
-```shell
-# initialize my-workspace for the example-application (main branch)
-west init -m https://github.com/zephyrproject-rtos/example-application --mr main my-workspace
-# update Zephyr modules
-cd my-workspace
-west update
-```
+| Folder | Purpose |
+|---|---|
+| `boards/` | Custom board definitions. `common/` holds shared board parts, `vendor/` holds the course's custom boards (used in the Board Bring Up sections). |
+| `drivers/` | Out-of-tree drivers written during the course: `blink/` and `sensor/`. Built as part of the workspace so apps can `select` them. |
+| `dts/bindings/` | Custom DeviceTree bindings for the out-of-tree drivers and custom hardware. |
+| `lib/custom/` | Shared library code reused across applications. |
+| `include/app/` | Shared C headers available to every app. |
+| `scripts/` | West extension commands for the workspace. |
+| `tests/` | Integration tests. |
+| `doc/` | Doxygen / Sphinx scaffolding. |
 
-### Building and running
+### Workspace files
 
-To build the application, run the following command:
+| File | Purpose |
+|---|---|
+| `west.yml` | West manifest. Tells `west` to fetch Zephyr plus only the HALs needed (`cmsis_6`, `hal_nordic`, `hal_stm32`) — keeps the workspace small. |
+| `CMakeLists.txt`, `Kconfig` | Top-level build entry points for the workspace. |
+| `zephyr/module.yml` | Registers this folder as a Zephyr module so its boards, drivers, and bindings are visible to the build system. |
+| `notes`, `notes_macros_rust` | Course-specific setup notes. |
 
-```shell
-cd example-application
-west build -b $BOARD app
-```
+---
 
-where `$BOARD` is the target board.
+## Building an application
 
-You can use the `custom_plank` board found in this
-repository. Note that Zephyr sample boards may be used if an
-appropriate overlay is provided (see `app/boards`).
+Once you have completed the Zephyr environment and SDK setup lessons in the course, build any application from the workspace root:
 
-A sample debug configuration is also provided. To apply it, run the following
-command:
+```bash
+# Build 001_za_led_blinky for the Fastbit STM32 Nano board
+west build -b fastbit_stm32nano mastering-zephyr/001_za_led_blinky
 
-```shell
-west build -b $BOARD app -- -DEXTRA_CONF_FILE=debug.conf
-```
-
-Once you have built the application, run the following command to flash it:
-
-```shell
+# Flash
 west flash
 ```
 
-### Testing
+Replace the app path and board target as appropriate for the lesson you are on.
 
-To execute Twister integration tests, run the following command:
+---
 
-```shell
-west twister -T tests --integration
-```
+## License
 
-### Documentation
-
-A minimal documentation setup is provided for Doxygen and Sphinx. To build the
-documentation first change to the ``doc`` folder:
-
-```shell
-cd doc
-```
-
-Before continuing, check if you have Doxygen installed. It is recommended to
-use the same Doxygen version used in [CI](.github/workflows/docs.yml). To
-install Sphinx, make sure you have a Python installation in place and run:
-
-```shell
-pip install -r requirements.txt
-```
-
-API documentation (Doxygen) can be built using the following command:
-
-```shell
-doxygen
-```
-
-The output will be stored in the ``_build_doxygen`` folder. Similarly, the
-Sphinx documentation (HTML) can be built using the following command:
-
-```shell
-make html
-```
-
-The output will be stored in the ``_build_sphinx`` folder. You may check for
-other output formats other than HTML by running ``make help``.
+Apache 2.0 — see [LICENSE](LICENSE).
