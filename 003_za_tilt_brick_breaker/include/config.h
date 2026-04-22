@@ -31,7 +31,7 @@
 /* --------------------------------------------------------------------------
  * Game configuration — edit these macros to tune gameplay
  * -------------------------------------------------------------------------- */
-#define BALL_SPEED_INIT      3      /* ball velocity magnitude (pixels/tick)  */
+#define BALL_SPEED_INIT      5      /* ball velocity magnitude (pixels/tick)  */
 #define BALL_SPEED_MAX       7      /* maximum ball speed after ramp-up       */
 #define SPEED_UP_INTERVAL    6      /* bricks destroyed per speed increase    */
 #define LIVES_INIT           3      /* starting number of lives               */
