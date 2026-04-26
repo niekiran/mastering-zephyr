@@ -1,0 +1,115 @@
+/dts-v1/;                           // Mandatory version marker for dtc
+
+/* Include files */
+// #include <CPU.dtsi>                 // If required : CPU core definitions 
+									// (e.g. arm/armv7-m.dtsi)
+#include <st/f3/stm32f303Xc.dtsi>   // Mandatory: SoC definitions
+//pinctrl definition file specific to your MCU variant
+//modules/hal/stm32/----
+#include <st/f3/stm32f303c(b-c)tx-pinctrl.dtsi> 
+//#include <optional-bindings.h>      // Optional: constants (GPIO flags, clocks, interrupts, etc.)
+
+// /memreserve/ <base> <size>;         // Optional: memory reservation(s)
+
+/ {                                 // Root node (mandatory)
+    
+	model = "Fastbit Embedded STM32 Nano Board";           // Optional: human-readable description
+    compatible = "fastbit,stm32-nano";    // Mandatory: at least one compatible string
+   
+
+    /* Optional: global settings */
+    chosen {
+        zephyr,console = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+    };
+
+    /* Optional: peripheral/device nodes */
+
+	aliases {
+       led0 = &led3;
+	   button0 = &button0;
+    };
+    
+	leds {
+		compatible = "gpio-leds";
+		blink-period-ms = <1000>;
+		led1: led_1 {
+				gpios = <&gpioa 1 GPIO_ACTIVE_HIGH>; // #gpio-cells = <2> this is there in gpioa
+				label  = "USER_LED1";
+		};
+
+		led2: led_2 {
+				gpios = <&gpioa 2 GPIO_ACTIVE_HIGH>;
+				label  = "USER_LED2";
+		};
+
+		led3: led_3 {
+				gpios = <&gpioa 3 GPIO_ACTIVE_HIGH>;
+				label  = "USER_LED3";
+		};
+	};
+
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: user_button {
+				gpios = <&gpioa 0 GPIO_ACTIVE_HIGH>; // #gpio-cells = <2> this is there in gpioa
+				label  = "USER_BUTTON0";
+		};
+	};
+
+}; //end of Root node
+
+
+&rcc {
+	ahb-prescaler = <1>;
+	clock-frequency = <DT_FREQ_M(8)>; /* = SYSCLK / AHB prescaler */
+	apb1-prescaler = <1>;
+	apb2-prescaler = <1>;
+};
+
+&i2c1_sda_pb7 {
+	bias-disable;
+};
+
+&i2c1_scl_pb6 {
+	bias-disable;
+};
+	
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+	pinctrl-names = "default";
+	status = "okay";
+	current-speed = <115200>;
+};
+
+
+&i2c1 {
+
+	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb7>;
+	pinctrl-names = "default";
+	status = "okay";
+	
+	mpu6050@68 {
+		compatible = "invensense,mpu6050";
+
+		int-gpios = <&gpiob 0 GPIO_ACTIVE_HIGH>;
+
+		// *-gpios  ==> a generic phandle-array property name
+		// gpio ==> this is the name of the specifier space
+		// we can only use & to those provider inside which #SPECIFIER_NAME-cells property is defined
+		// in this example, 
+		// we can only use & to those provider inside which #gpio-cells property is defined. 
+
+		// In general, 
+		// a phandle-array property named 'bars' implicitly uses the specifier space name 'bar'
+
+	
+		reg = <0x68>;
+	};
+
+};
+
+
+	
